@@ -93,21 +93,56 @@ def write_test_predictions(out_file, postId, utilities, ranks):
 	out_file_o.write(lstring + '\n')
 	out_file_o.close()
 
-def shuffle_data(p, pm, q, qm, a, am):
-	sp = [None]*len(p)
-	spm = [None]*len(pm)
-	sq = [None]*len(q)
-	sqm = [None]*len(qm)
-	sa = [None]*len(a)
-	sam = [None]*len(am)
-	indexes = range(len(p))
-	random.shuffle(indexes)
-	for i, index in enumerate(indexes):
-		sp[i] = p[index]
-		spm[i] = pm[index]
-		sq[i] = q[index]
-		sqm[i] = qm[index]
-		sa[i] = a[index]
-		sam[i] = am[index]
-	return np.array(sp), np.array(spm), np.array(sq), np.array(sqm), np.array(sa), np.array(sam)
+def get_annotations(line):
+	set_info, post_id, best, valids, confidence = line.split(',')
+	sitename = set_info.split('_')[1]
+	best = [int(best)]
+	valids = [int(v) for v in valids.split()]
+	confidence = int(confidence)
+	return post_id, sitename, best, valids, confidence
+
+def evaluate_using_human_annotations(args, preds):
+	human_annotations_file = open(args.test_human_annotations, 'r')
+	best_acc_on10 = 0
+	best_acc_on9 = 0
+
+	valid_acc_on10 = 0
+	valid_acc_on9 = 0
+
+	total = 0
+	total_best_on9 = 0	
+
+	for line in human_annotations_file.readlines():
+		line = line.strip('\n')
+		splits = line.split('\t')
+		post_id, sitename, best, valids, confidence = get_annotations(splits[0])
+		if len(splits) > 1:
+			post_id2, sitename2, best2, valids2, confidence2 = get_annotations(splits[1])		
+			assert(sitename == sitename2)
+			assert(post_id == post_id2)
+			best += [best2]
+			valids += valids2
+
+		if best != 0:
+			total_best_on9 += 1
+
+		post_id = sitename+'_'+post_id
+		pred = preds[post_id].index(max(preds[post_id]))
+
+		if pred in best:
+			best_acc_on10 += 1
+			if best != 0:
+				best_acc_on9 +=1
+
+		if pred in valids:
+			valid_acc_on10 += 1
+			if pred != 0:
+				valid_acc_on9 += 1
+
+		total += 1
+
+	print 
+	print '\t\tBest acc on 10: %.2f  Valid acc on 10: %.2f' % (best_acc_on10*100.0/total, valid_acc_on10*100.0/total)
+	print '\t\tBest acc on 9:  %.2f  Valid acc on 9:  %.2f' % (best_acc_on9*100.0/total_best_on9, valid_acc_on9*100.0/total)
+	print 
 
