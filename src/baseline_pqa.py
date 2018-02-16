@@ -63,8 +63,9 @@ def build(word_embeddings, len_voc, word_emb_dim, args, freeze=False):
 			l_post_ques_ans_dense_ = lasagne.layers.DenseLayer(l_post_ques_ans_dense_, num_units=1,\
 														   nonlinearity=lasagne.nonlinearities.sigmoid)
 			pqa_preds[i*N+j] = lasagne.layers.get_output(l_post_ques_ans_dense_)
-		loss += T.sum(lasagne.objectives.binary_crossentropy(pqa_preds[i*N+i], labels[:,i]))
-		
+		#loss += T.sum(lasagne.objectives.binary_crossentropy(pqa_preds[i*N+i], labels[:,i]))
+		loss += T.mean(lasagne.objectives.binary_crossentropy(pqa_preds[i*N+i], labels[:,i]))
+	
 	squared_errors = [None]*(N*N)
 	for i in range(N):
 		for j in range(N):
@@ -93,16 +94,18 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 	_lambda = 0.5
 	N = args.no_of_candidates
 	recall = [0]*N
+	batch_size = args.batch_size
 	
 	if out_file:
 		out_file_o = open(out_file, 'a')
 		out_file_o.write("\nEpoch: %d\n" % epoch)
 		out_file_o.close()
 	posts, post_masks, ques_list, ques_masks_list, ans_list, ans_masks_list, post_ids = fold
+	all_preds = {}
 	for p, pm, q, qm, a, am, ids in iterate_minibatches(posts, post_masks, ques_list, ques_masks_list, ans_list, ans_masks_list,\
-														 post_ids, args.batch_size, shuffle=True):
-		l = np.zeros((args.batch_size, N), dtype=np.int32)
-		r = np.zeros((args.batch_size, N), dtype=np.int32)
+														 post_ids, batch_size, shuffle=False):
+		l = np.zeros((batch_size, N), dtype=np.int32)
+		r = np.zeros((batch_size, N), dtype=np.int32)
 		l[:,0] = 1
 		for j in range(N):
 			r[:,j] = j
@@ -121,7 +124,7 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 		errors = np.transpose(errors, (1, 0, 2))
 		errors = errors[:,:,0]
 		cost += loss
-		for j in range(args.batch_size):
+		for j in range(batch_size):
 			preds = [0.0]*N
 			for k in range(N):
 				preds[k] = probs[j][k*N+k]
@@ -135,14 +138,20 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 			total += 1
 			if out_file:
 				write_test_predictions(out_file, ids[j], preds, r[j])
+			if args.test_human_annotations:
+				all_preds[ids[j]] = preds
 		num_batches += 1
-	
+
 	recall = [round(curr_r*1.0/total, 3) for curr_r in recall]	
 	lstring = '%s: epoch:%d, cost:%f, acc:%f, mrr:%f,time:%d' % \
 				(fold_name, epoch, cost*1.0/num_batches, corr*1.0/total, mrr*1.0/total, time.time()-start)
+
 	print lstring
 	print recall
 
+	if 'TEST' in fold_name and args.test_human_annotations:
+		evaluate_using_human_annotations(args, all_preds)
+				
 def baseline_pqa(word_embeddings, vocab_size, word_emb_dim, freeze, args, train, test):
 	start = time.time()
 	print 'compiling graph...'
