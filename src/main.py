@@ -29,7 +29,7 @@ def main(args):
 
 	out_file = open(args.test_predictions_output, 'w')
 	out_file.close()
-	
+
 	word_embeddings = p.load(open(args.word_embeddings, 'rb'))
 	word_embeddings = np.asarray(word_embeddings, dtype=np.float32)
 	vocab_size = len(word_embeddings)
@@ -83,6 +83,7 @@ if __name__ == '__main__':
 	argparser.add_argument("--ques_max_len", type = int, default = 40)
 	argparser.add_argument("--ans_max_len", type = int, default = 40)
 	argparser.add_argument("--test_predictions_output", type = str)
+	argparser.add_argument("--test_human_annotations", type = str)
 	argparser.add_argument("--model", type = str)
 	args = argparser.parse_args()
 	print args
