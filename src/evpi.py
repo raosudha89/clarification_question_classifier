@@ -12,24 +12,9 @@ DEPTH = 5
 from lstm_helper import *
 from model_helper import *
 
-def build(word_embeddings, len_voc, word_emb_dim, args, freeze=False):
-	# input theano vars
-	posts = T.imatrix()
-	post_masks = T.fmatrix()
-	ques_list = T.itensor3()
-	ques_masks_list = T.ftensor3()
-	ans_list = T.itensor3()
-	ans_masks_list = T.ftensor3()
-	labels = T.imatrix()
-	N = args.no_of_candidates
-
-	post_out, post_lstm_params = build_lstm(posts, post_masks, args.post_max_len, \
-												  word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)	
-	ques_out, ques_lstm_params = build_list_lstm(ques_list, ques_masks_list, N, args.ques_max_len, \
-											word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)
-	ans_out, ans_lstm_params = build_list_lstm(ans_list, ans_masks_list, N, args.ans_max_len, \
-											word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)
+def answer_model(post_out, ques_out, ans_out, labels, args):
 	# Pr(a|p,q)
+	N = args.no_of_candidates
 	pq_out = [None]*N
 	post_ques = T.concatenate([post_out, ques_out[0]], axis=1)
 	l_post_ques_in = lasagne.layers.InputLayer(shape=(args.batch_size, 2*args.hidden_dim), input_var=post_ques)
@@ -72,19 +57,19 @@ def build(word_embeddings, len_voc, word_emb_dim, args, freeze=False):
 	
 	pq_a_loss = 0.0	
 	for i in range(N):
-		#pq_a_loss += T.sum(T.dot(labels[:,i], pq_a_squared_errors[i*N+i]))
 		pq_a_loss += T.mean(T.dot(labels[:,i], pq_a_squared_errors[i*N+i]))
 		for j in range(N):
-			#pq_a_loss += T.sum(T.dot(labels[:,i], pq_a_squared_errors[i*N+j] * (1-lasagne.nonlinearities.tanh(ques_squared_errors[i*N+j]))))
 			pq_a_loss += T.mean(T.dot(labels[:,i], pq_a_squared_errors[i*N+j] * (1-lasagne.nonlinearities.tanh(ques_squared_errors[i*N+j]))))
-	
+
+	return pq_a_loss, post_ques_dense_params, pq_out, ques_squared_errors, pq_a_squared_errors
+
+def utility_calculator(post_out, ans_out, labels, args):
 	#utility function
+	N = args.no_of_candidates
 	pa_loss = 0.0
 	pa_preds = [None]*N
 	post_ans = T.concatenate([post_out, ans_out[0]], axis=1)
-	#post_ans = T.concatenate([post_out, ques_out[0], ans_out[0]], axis=1)
 	l_post_ans_in = lasagne.layers.InputLayer(shape=(args.batch_size, 2*args.hidden_dim), input_var=post_ans)
-	#l_post_ans_in = lasagne.layers.InputLayer(shape=(args.batch_size, 3*args.hidden_dim), input_var=post_ans)
 	l_post_ans_denses = [None]*DEPTH
 	for k in range(DEPTH):
 		if k == 0:
@@ -131,6 +116,30 @@ def build(word_embeddings, len_voc, word_emb_dim, args, freeze=False):
 		pa_loss += T.mean(lasagne.objectives.binary_crossentropy(pa_preds[i], labels[:,i]))
 	post_ans_dense_params = lasagne.layers.get_all_params(l_post_ans_dense, trainable=True)
 	print 'Params in post_ans ', lasagne.layers.count_params(l_post_ans_dense)
+
+	return pa_loss, post_ans_dense_params, pa_preds
+
+def build(word_embeddings, len_voc, word_emb_dim, args, freeze=False):
+	# input theano vars
+	posts = T.imatrix()
+	post_masks = T.fmatrix()
+	ques_list = T.itensor3()
+	ques_masks_list = T.ftensor3()
+	ans_list = T.itensor3()
+	ans_masks_list = T.ftensor3()
+	labels = T.imatrix()
+	N = args.no_of_candidates
+
+	post_out, post_lstm_params = build_lstm(posts, post_masks, args.post_max_len, \
+												  word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)	
+	ques_out, ques_lstm_params = build_list_lstm(ques_list, ques_masks_list, N, args.ques_max_len, \
+											word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)
+	ans_out, ans_lstm_params = build_list_lstm(ans_list, ans_masks_list, N, args.ans_max_len, \
+											word_embeddings, word_emb_dim, args.hidden_dim, len_voc, args.batch_size)
+	
+	pq_a_loss, post_ques_dense_params, pq_out, ques_squared_errors, pq_a_squared_errors = answer_model(post_out, ques_out, ans_out, labels, args)
+	pa_loss, post_ans_dense_params, pa_preds = utility_calculator(post_out, ans_out, labels, args)	
+
 	all_params = post_lstm_params + ques_lstm_params + ans_lstm_params + post_ques_dense_params + post_ans_dense_params
 	
 	#loss = pq_a_loss + pa_loss*1.0/N	
