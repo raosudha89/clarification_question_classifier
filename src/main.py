@@ -38,7 +38,7 @@ def main(args):
 	freeze = False
 	N = args.no_of_candidates
 	
-	print 'vocab_size ', vocab_size, ', post_max_len ', args.post_max_len
+	print 'vocab_size ', vocab_size, ', post_max_len ', args.post_max_len, ' ques_max_len ', args.ques_max_len, ' ans_max_len ', args.ans_max_len
 
 	start = time.time()
 	print 'generating data'
@@ -80,8 +80,8 @@ if __name__ == '__main__':
 	argparser.add_argument("--post_max_len", type = int, default = 300)
 	argparser.add_argument("--post_max_sents", type = int, default = 10)
 	argparser.add_argument("--post_max_sent_len", type = int, default = 10)
-	argparser.add_argument("--ques_max_len", type = int, default = 40)
-	argparser.add_argument("--ans_max_len", type = int, default = 40)
+	argparser.add_argument("--ques_max_len", type = int, default = 20)
+	argparser.add_argument("--ans_max_len", type = int, default = 25)
 	argparser.add_argument("--test_predictions_output", type = str)
 	argparser.add_argument("--test_human_annotations", type = str)
 	argparser.add_argument("--model", type = str)

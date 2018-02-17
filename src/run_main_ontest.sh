@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=aus_baseline_pqa
-#SBATCH --output=aus_baseline_pqa
+#SBATCH --job-name=aus_baseline_pa
+#SBATCH --output=aus_baseline_pa
 #SBATCH --qos=gpu
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu
@@ -31,6 +31,6 @@ THEANO_FLAGS=floatX=float32,device=gpu0 python $SCRIPTS_DIR/main.py \
 												--ans_list_vectors_test $DATA_DIR/$SITE_NAME/ans_list_vectors_test.p \
 												--word_embeddings $EMB_DIR/word_embeddings.p \
                                                 --batch_size 128 --no_of_epochs 15 --no_of_candidates 10 \
-												--test_predictions_output $DATA_DIR/$SITE_NAME/test_predictions_baseline_pqa_split.out \
+												--test_predictions_output $DATA_DIR/$SITE_NAME/test_predictions_baseline_pa_split.out \
 												--test_human_annotations $UPWORK_DATA_DIR/$SITE_NAME/human_annotations \
-												--model baseline_pqa
+												--model baseline_pa

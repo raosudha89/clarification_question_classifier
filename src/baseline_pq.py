@@ -91,8 +91,9 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 		out_file_o.write("\nEpoch: %d\n" % epoch)
 		out_file_o.close()
 	posts, post_masks, ques_list, ques_masks_list, ans_list, ans_masks_list, post_ids = fold
+	all_preds = {}
 	for p, pm, q, qm, a, am, ids in iterate_minibatches(posts, post_masks, ques_list, ques_masks_list,	\
-														ans_list, ans_masks_list, post_ids, args.batch_size, shuffle=True):
+														ans_list, ans_masks_list, post_ids, args.batch_size, shuffle=False):
 		l = np.zeros((args.batch_size, N), dtype=np.int32)
 		r = np.zeros((args.batch_size, N), dtype=np.int32)
 		l[:,0] = 1
@@ -122,6 +123,8 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 			total += 1
 			if out_file:
 				write_test_predictions(out_file, ids[j], preds, r[j])
+			if args.test_human_annotations:
+				all_preds[ids[j]] = preds
 		num_batches += 1
 	
 	recall = [round(curr_r*1.0/total, 3) for curr_r in recall]	
@@ -129,6 +132,9 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 				(fold_name, epoch, cost*1.0/num_batches, corr*1.0/total, mrr*1.0/total, time.time()-start)
 	print lstring
 	print recall
+
+	if 'TEST' in fold_name and args.test_human_annotations:
+		evaluate_using_human_annotations(args, all_preds)
 
 def baseline_pq(word_embeddings, vocab_size, word_emb_dim, freeze, args, train, test):
 	start = time.time()

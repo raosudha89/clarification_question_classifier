@@ -29,6 +29,6 @@ THEANO_FLAGS=floatX=float32,device=gpu0 python $SCRIPTS_DIR/main.py \
 												--ques_list_vectors_test $DATA_DIR/$SITE_NAME/ques_list_vectors_tune.p \
 												--ans_list_vectors_test $DATA_DIR/$SITE_NAME/ans_list_vectors_tune.p \
 												--word_embeddings $EMB_DIR/word_embeddings.p \
-                                                --batch_size 200 --no_of_epochs 15 --no_of_candidates 10 \
+                                                --batch_size 128 --no_of_epochs 15 --no_of_candidates 10 \
 												--test_predictions_output $DATA_DIR/$SITE_NAME/tune_predictions_evpi_sum_split.out \
 												--model evpi_sum
