@@ -254,7 +254,10 @@ def validate(val_fn, fold_name, epoch, fold, args, out_file=None):
 		evaluate_using_human_annotations(args, all_preds)
 
 def evpi(word_embeddings, vocab_size, word_emb_dim, freeze, args, train, test):
+	print 'Compiling graph...'
+	start = time.time()
 	train_fn, test_fn = build(word_embeddings, vocab_size, word_emb_dim, args, freeze=freeze)
+	print 'done! Time taken: ', time.time() - start
 	
 	# train network
 	for epoch in range(args.no_of_epochs):
